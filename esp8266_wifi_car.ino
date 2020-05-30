@@ -84,9 +84,11 @@ static const char PROGMEM INDEX_HTML[] = R"rawliteral(
                 <button class="btn" onclick="changeDirection('right')"><i class="fa fa-arrow-right"></i></button>
         <tr>
             <td>
+                <button class="btn" onclick="changeDirection('turn-left')"><i class="fa fa-undo"></i></button>
             <td>
                 <button class="btn" onclick="changeDirection('backward')"><i class="fa fa-arrow-down"></i></button>
             <td>
+                <button class="btn" onclick="changeDirection('turn-right')"><i class="fa fa-undo fa-flip-horizontal"></i></button>
     </table>
 </body>
 </html>
@@ -106,6 +108,7 @@ int enb = 12;  /* GPIO12(D6) -> Motor-B Enable */
 
 char* direction = "none";
 
+const int MIN_SPEED = 270;
 int currentSpeed = 300;
 
 void setup() {
@@ -123,7 +126,7 @@ void startWiFi() {
   Serial.print(ssid);
   Serial.println("\" started\r\n");
 
-  wifiMulti.addAP("N1", "wifipassword1");
+  wifiMulti.addAP("somewifi", "somepassword");
 
   Serial.println("Connecting");
   while (wifiMulti.run() != WL_CONNECTED && WiFi.softAPgetStationNum() < 1) {  
@@ -223,6 +226,10 @@ void handleDirectionCommand(String commandValue) {
      right();
   } else if(commandValue == "stop") {
      stop();
+  } else if(commandValue == "turn-right") {
+     turnRight();
+  } else if(commandValue == "turn-left") {
+     turnLeft();
   } else {
     Serial.println("Unknown direction" + commandValue);
   }
@@ -249,6 +256,8 @@ int getSpeed() {
 
 void forward() {
   Serial.println("Moving forward...");
+  analogWrite(ena, currentSpeed);
+  analogWrite(enb, currentSpeed);
   digitalWrite(in1, HIGH);
   digitalWrite(in2, LOW);
   digitalWrite(in3, HIGH);
@@ -258,6 +267,8 @@ void forward() {
 
 void backward() {
   Serial.println("Moving backward...");
+  analogWrite(ena, currentSpeed);
+  analogWrite(enb, currentSpeed);
   digitalWrite(in1, LOW);
   digitalWrite(in2, HIGH);
   digitalWrite(in3, LOW);
@@ -266,44 +277,38 @@ void backward() {
 }
 
 void left() {
-  digitalWrite(in3, LOW);
-  digitalWrite(in4, LOW);
+  analogWrite(ena, currentSpeed);
+  analogWrite(enb, max((int)(currentSpeed * 0.65), MIN_SPEED));
   if(direction == "backward") {
     Serial.println("Moving backward right.");
     digitalWrite(in1, LOW);
     digitalWrite(in2, HIGH);  
+    digitalWrite(in3, LOW);
+    digitalWrite(in4, HIGH);
   } else {
     Serial.println("Moving forward right.");
     digitalWrite(in1, HIGH);
     digitalWrite(in2, LOW);  
+    digitalWrite(in3, HIGH);
+    digitalWrite(in4, LOW);
   }
 }
 
 void right() {
-  digitalWrite(in1, LOW);
-  digitalWrite(in2, LOW);
+  analogWrite(ena, max((int)(currentSpeed * 0.65), MIN_SPEED));
+  analogWrite(enb, currentSpeed);
   if(direction == "backward") {
     Serial.println("Moving backward right.");
+    digitalWrite(in1, LOW);
+    digitalWrite(in2, HIGH);
     digitalWrite(in3, LOW);
     digitalWrite(in4, HIGH);  
   } else {
     Serial.println("Moving forward right.");
+    digitalWrite(in1, HIGH);
+    digitalWrite(in2, LOW);
     digitalWrite(in3, HIGH);
     digitalWrite(in4, LOW);  
-  }
-}
-
-void continueMove() {
-  if(direction == "forward") {
-    forward();
-  } else if(direction == "backward") {
-    backward();
-  } else if(direction == "left") {
-    left();
-  } else if(direction == "right") {
-    right();
-  } else if(direction == "none") {
-    stop();
   }
 }
 
@@ -314,4 +319,24 @@ void stop() {
   digitalWrite(in3, LOW);
   digitalWrite(in4, LOW);
   direction = "none";
+}
+
+void turnRight() {
+  Serial.println("Turning right");
+  analogWrite(ena, max((int)(currentSpeed * 0.5), MIN_SPEED));
+  analogWrite(enb, max((int)(currentSpeed * 0.5), MIN_SPEED));
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, HIGH);
+  digitalWrite(in3, HIGH);
+  digitalWrite(in4, LOW);
+}
+
+void turnLeft() {
+  Serial.println("Turning left");
+  analogWrite(ena, max((int)(currentSpeed * 0.5), MIN_SPEED));
+  analogWrite(enb, max((int)(currentSpeed * 0.5), MIN_SPEED));
+  digitalWrite(in1, HIGH);
+  digitalWrite(in2, LOW);
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, HIGH);
 }
